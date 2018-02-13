@@ -25,8 +25,9 @@ public:
     }
 };
 void usge(){
-	cout<<"use:\n-in: tag uart dev"<<endl;
-	cout<<"-out: fc uart dev"<<endl;
+	cout<<"use: "<<endl;
+	cout<<"-in : input uwb tag uart dev"<<endl;
+	cout<<"-out: output uart dev"<<endl;
 	cout<<"-pos: archor init coordinate local.( e.g.[[id1,x1,y1,z1];[id2,x2,y2,z2];[];...])"<<endl;
 	cout<<"-param: param to use solve the location.(e.g. accStd = 0.957, distStd = 0.33, distOffset = 0.11, trustLevel = 5) "<<endl;
 	cout<<"-e:use ekf"<<endl;
