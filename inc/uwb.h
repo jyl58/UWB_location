@@ -15,8 +15,8 @@
 #define MSGID_BEACON_DIST   0x03
 #define MSGID_POSITION      0x04
 
-#define FREQ_CONFIG 5
-#define FREQ_POS 2
+#define FREQ_CONFIG 10
+#define FREQ_POS 10
 
 // structure for messages uploaded to ardupilot
 #pragma pack(1)
