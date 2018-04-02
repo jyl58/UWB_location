@@ -173,7 +173,7 @@ void BooStar::send_pos(){
 double BooStar::tic(){
   struct timeval t;
   gettimeofday(&t, NULL);
-  return ((double)t.tv_sec*1000 + ((double)t.tv_usec)/1000);
+  return ((double)t.tv_sec*1000 + ((double)t.tv_usec)*0.001);
 }
 //check the anchor id is valid or not 
 int BooStar::anchor_is_valid(int anchor_id){
