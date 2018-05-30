@@ -14,7 +14,7 @@ Interface_UART::Interface_UART(const char* portname, int speed)
     fd = ::open(portname, (O_RDWR | O_NOCTTY | O_SYNC));
     if (fd < 0){
            std::cout<<"ubable open the port "<<portname<<std::endl;
-            return;
+           exit(1);
     }
 
     SetupSerial(fd, speed, 8, 1, 'N');
@@ -22,7 +22,7 @@ Interface_UART::Interface_UART(const char* portname, int speed)
 
 Interface_UART::~Interface_UART() {
 
-    /* Shutdown the file descriptor*/
+    /*Shutdown the file descriptor*/
     close(fd);
 }
 

@@ -1,4 +1,5 @@
 #include "uwb.h"
+#include "config_parser.h"
 //class for parsing command line
 class CmdLineParser
 {
@@ -33,6 +34,7 @@ void usge(){
 	cout<<"-e:use ekf"<<endl;
 	cout<<"-m: solve method TOF(default) or TDOA"<<endl;
 	cout<<"-d: dbug message"<<endl;
+	cout<<"-f: use config file "<<endl;
 }
 int main(int argc,char **argv){
 	CmdLineParser option(argc,argv);
@@ -43,33 +45,6 @@ int main(int argc,char **argv){
 	string solve_method="TOF";
 	bool dbug=false;
 	int useekf=0;
-	if(!option["-in"]) {
-		cout<<"need set in dev "<<endl;
-		usge();
-		exit(1);
-	}
-	in_dev=option("-in");
-	
-	if(!option["-out"]){
-		cout<<"need set out dev"<<endl;
-		usge();
-		exit(1);
-	}
-	out_dev=option("-out");
-	
-	if(!option["-pos"]){
-		cout<<"need set anchor coordinate"<<endl;
-		usge();
-		exit(1);
-	}
-	archor_pos=option("-pos");
-	
-	if(!option["-param"]){
-		cout<<"use default param "<<endl;
-	}else{
-		uwb_param=option("-param");
-	}
-	
 	if(option["-m"])
 		solve_method=option("-m");
 	
@@ -79,6 +54,49 @@ int main(int argc,char **argv){
 	if(option["-d"])
 		 dbug=true;
 	 
+	if(!option["-f"]){
+		if(!option["-in"]) {
+			cout<<"need set input dev "<<endl;
+			usge();
+			exit(1);
+		}
+		in_dev=option("-in");
+		
+		if(!option["-out"]){
+			cout<<"need set output dev"<<endl;
+			usge();
+			exit(1);
+		}
+		out_dev=option("-out");
+		
+		if(!option["-pos"]){
+			cout<<"need set anchor coordinate"<<endl;
+			usge();
+			exit(1);
+		}
+		archor_pos=option("-pos");
+		
+		if(!option["-param"]){
+			cout<<"use default param "<<endl;
+		}else{
+			uwb_param=option("-param");
+		}
+	}else{
+		UWBConfigParser uwb_cfg;
+		if(option("-f").empty()){
+			cout<<"config file is empty"<<endl;
+			usge();
+			exit(1);
+		}
+		if(!uwb_cfg.set_boostar_config_file(option("-f"))){
+			cout<<"cfg file have err!"<<endl;
+			exit(1);
+		}
+		uwb_cfg.get_boostar_input_dev(&in_dev);
+		uwb_cfg.get_boostar_output_dev(&out_dev);
+		uwb_cfg.get_boostar_anchor_pos(&archor_pos);
+	}
+	
 	//open tag uart
 	Interface_UART tag_uart(in_dev.c_str(),9600);
 	//open fc uart
