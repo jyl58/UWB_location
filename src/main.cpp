@@ -100,7 +100,7 @@ int main(int argc,char **argv){
 	//open tag uart
 	Interface_UART tag_uart(in_dev.c_str(),9600);
 	//open fc uart
-	Interface_UART fc_uart(out_dev.c_str(),9600);
+	Interface_UART fc_uart(out_dev.c_str(),115200);
 	
 	BooStar boostar_uwb(&tag_uart,&fc_uart,useekf,dbug);
 	
