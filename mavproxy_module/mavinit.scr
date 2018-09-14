@@ -1,0 +1,16 @@
+module unload auxopt
+module unload calibration
+module unload fence
+module unload signing
+module unload terrain
+module unload wp
+module unload log
+module unload rc
+module unload relay
+module unload tuneopt
+module unload battery
+module unload param
+module unload cmdlong
+module unload rally
+
+module load  BeaconToGPS
