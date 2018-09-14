@@ -43,9 +43,10 @@ class BeaconToGPS(mp_module.MPModule):
                 else:
                         print("NED to UWB yaw:" + str(self.yaw_deg)+" deg")
 
-                self.debug=False
-                if self.config_file_parser.getint("SYS","debug") == 1:
-                       self.debug=True
+                self.debug = 0
+                self.debug=self.config_file_parser.getint("SYS","debug"):
+                if self.debug is None:
+                    self.debug=0    
 
         	serial_port_dev = get_first_pozyx_serial_port()
 		if serial_port_dev is None:
@@ -132,7 +133,7 @@ class BeaconToGPS(mp_module.MPModule):
 
 	def setup_pozyx(self):
 		self.setAnchorsManual()
-		if self.debug:
+		if self.debug > 0:
 			self.print_anchor_config()
 
 		self.pozyx.doPositioning(self.pos_last, POZYX_3D, 1000, POZYX_POS_ALG_TRACKING)
@@ -152,10 +153,10 @@ class BeaconToGPS(mp_module.MPModule):
 
 			self.get_tag_velocity(pos_mm,now)
 			self.location_update=True
-			if self.debug:
+			if self.debug ==2 :
 				print(" Postion is X: "+str(self.position.x)+" m; Y: "+str(self.position.y)+" m; Z: "+str(self.position.z)+" m;"+" err: "+str(pos_err.xy))
 		else:
-			if self.debug:
+			if self.debug ==2 :
 				print("Do not get tag position")
 
 	def get_tag_velocity(self, position_now,time_now):
@@ -173,7 +174,7 @@ class BeaconToGPS(mp_module.MPModule):
 		self.velocity.y=delt_pos.y/delt_time;
 		self.velocity.z=delt_pos.z/delt_time;
 
-		if self.debug:
+		if self.debug ==2 :
 			print("Tag velocity is X=" +str(self.velocity.x)+"m/s; Y="+str(self.velocity.y)+"m/s Z="+str(self.velocity.z)+"m/s")
 
 	def mavlink_packet(self, m):
@@ -223,7 +224,7 @@ class BeaconToGPS(mp_module.MPModule):
 		#lon_reference_rad=self.reference_lon*self.DEG_TO_RAD
 		self.current_lat=( self.reference_lat_rad + self.tag_pos_ned.x/self.CONSTANTS_RADIUS_OF_EARTH )*self.RAD_TO_DEG
         	self.current_lon=( self.reference_lon_rad + self.tag_pos_ned.y/self.target_lon_param )*self.RAD_TO_DEG
-		if self.debug:
+		if self.debug == 2:
 			print("Current lat:"+str(self.current_lat)+"; lon:"+str(self.current_lon))
 
 	def convert_to_ned(self,vector):
@@ -248,9 +249,10 @@ class BeaconToGPS(mp_module.MPModule):
                         self.global_point_from_vector()
                         self.send_gps_message()
                         self.location_update=False
-                        now=time.time()
-                        print("update hz:"+str(1/(now-self.location_update_time)))
-                        self.location_update_time=now
+                        if self.debug == 1:
+                                now=time.time()
+                                print("update hz:"+str(1/(now-self.location_update_time)))
+                                self.location_update_time=now
 
 def init(mpstate):
     '''initialise module'''
