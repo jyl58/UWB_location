@@ -6,6 +6,8 @@ import errno
 import time
 import math
 
+import ConfigParser #config file
+
 #import pozyx control lib
 from pypozyx import POZYX_POS_ALG_TRACKING, POZYX_3D, Coordinates, POZYX_SUCCESS, POZYX_RANGE_PROTOCOL_PRECISION,DeviceCoordinates, PozyxSerial, get_first_pozyx_serial_port, SingleRegister, DeviceList,DeviceRange,PositionError,UWBSettings
 
@@ -24,7 +26,26 @@ class BeaconToGPS(mp_module.MPModule):
 	def __init__(self, mpstate):
         	"""Initialise module"""
         	super(BeaconToGPS, self).__init__(mpstate, "BeaconToGPS", "")
-		self.anchor_config='[[0x6e08,0,0,950];[0x6e45,5000,0,2330];[0x6e48,0,6010,2360];[0x6e65,5000,6010,1370]]'
+		self.anchor_config=None #'[[0x6e08,0,0,950];[0x6e45,5000,0,2330];[0x6e48,0,6010,2360];[0x6e65,5000,6010,1370]]'
+
+                self.config_file_parser=ConfigParser.ConfigParser()
+                self.config_file_parser.read( os.getcwd() + '/config/uwb_config.conf')
+
+                self.anchor_config=self.config_file_parser.get("Anchor", "anchor_coordinates")
+                if self.anchor_config is None:
+                        print("Need set the anchor coordinate!")
+                        return
+
+                self.yaw_deg=self.config_file_parser.getfloat("NED", "yaw_form_ned_to_uwb")
+                if self.yaw_deg is None:
+                        print("Need set the yaw from ned to uwb!")
+                        return
+                else:
+                        print("NED to UWB yaw:" + str(self.yaw_deg)+" deg")
+
+                self.debug=False
+                if self.config_file_parser.getint("SYS","debug") == 1:
+                       self.debug=True
 
         	serial_port_dev = get_first_pozyx_serial_port()
 		if serial_port_dev is None:
@@ -33,7 +54,7 @@ class BeaconToGPS(mp_module.MPModule):
 
 		self.pozyx = PozyxSerial(serial_port_dev)
 		self.anchors = self.anchor_config[1:len( self.anchor_config)-1].split(";")
-		self.debug=False
+
 		self.anchor_list=[]
 		self.position = Coordinates()
 		self.velocity = Coordinates()
@@ -54,7 +75,7 @@ class BeaconToGPS(mp_module.MPModule):
         	self.current_lon=0
         	self.tag_pos_ned=Coordinates()
         	self.tag_velocity_ned=Coordinates()
-        	self.yaw=math.radians(-20.0)
+                self.yaw=math.radians(self.yaw_deg)  
 		self.cos_yaw=math.cos(self.yaw)
 		self.sin_yaw=math.sin(self.yaw)
 		self.location_update=False
@@ -79,39 +100,6 @@ class BeaconToGPS(mp_module.MPModule):
             		'vert_accuracy' : 0,                    # (float) GPS vertical accuracy in m
            		'satellites_visible' : 0                # (uint8_t) Number of satellites visible.
         		}
-        	self.add_command('B2G_anchor', self.cmd_set_anchor,  'B2G_anchor param')
-		self.add_command('B2G_debug', self.cmd_set_debug,  'B2G_debug param')
-		self.add_command('B2G_yaw', self.cmd_set_yaw,  'B2G_yaw param')
-
-	def cmd_set_anchor(self,args):
-		''' set anchor coordinate'''
-		usage="usage: B2G_anchor  [value]"
-
-		if len(args) <= 0:
-			print(usage)
-			return
-
-		if args[0] == None:
-			print("B2G_set anchor [[id1,x1,y1,z1]:[id2,x2,y2,z2]:[id3,x3,y3,z3]:[id4,x4,y4,z4]]")
-			return
-
-		anchor_coordinate=args[0]
-		anchors=anchor_coordinate[1:len(anchor_coordinate)-1].split(":")
-		self.pozyx_dev=Pozyx2GPS(anchors)
-
-	def cmd_set_debug(self,args):
-		if args[0] == None:
-			print("B2G_debug 1|0")
-			return
-		if self.pozyx_dev:
-			self.pozyx_dev.debug=int(args[0])
-
-	def cmd_set_yaw(self,args):
-		if args[0] == None:
-			print("B2G_yaw deg")
-			return
-		self.yaw=math.radians(int(args[1]))
-		print("set yaw :" + str(self.yaw))
 
 	def setAnchorsManual(self):
 		''' config anchor'''
@@ -151,10 +139,10 @@ class BeaconToGPS(mp_module.MPModule):
 		self.pos_last_time=time.time()
 
 	def get_location(self):
-		"""Performs positioning and displays/exports the results."""
-		now=time.time()
+		"""Performs positioning and displays/exports the results."""	
 		pos_mm= Coordinates()
 		status = self.pozyx.doPositioning(pos_mm, POZYX_3D, 1000, POZYX_POS_ALG_TRACKING)
+		now=time.time()
 		if status == POZYX_SUCCESS:
 			pos_err=PositionError()
 			self.pozyx.getPositionError(pos_err)
@@ -166,9 +154,9 @@ class BeaconToGPS(mp_module.MPModule):
 			self.location_update=True
 			if self.debug:
 				print(" Postion is X: "+str(self.position.x)+" m; Y: "+str(self.position.y)+" m; Z: "+str(self.position.z)+" m;"+" err: "+str(pos_err.xy))
-		#else:
-			#if self.debug:
-			#	print("Do not get tag position")
+		else:
+			if self.debug:
+				print("Do not get tag position")
 
 	def get_tag_velocity(self, position_now,time_now):
 		delt_pos=Coordinates()
@@ -249,20 +237,20 @@ class BeaconToGPS(mp_module.MPModule):
 	def idle_task(self):
 		'''get location by uwb'''
 		if self.pozyx== None:
-			print("pozyx dev us none")
+			print("pozyx dev is none")
 			return
 
 		self.get_location()
-		#if self.location_update:
-		self.tag_pos_ned=self.convert_to_ned(self.position) #m
-		self.tag_velocity_ned=self.convert_to_ned(self.velocity) #m/s
-		self.tag_velocity_ned.z=-self.tag_velocity_ned.z  #ned
-		self.global_point_from_vector()
-		self.send_gps_message()
-		self.location_update=False
-		now=time.time()
-		print("update hz:"+str(1/(now-self.location_update_time)))
-		self.location_update_time=now
+		if self.location_update:
+                        self.tag_pos_ned=self.convert_to_ned(self.position) #m
+                        self.tag_velocity_ned=self.convert_to_ned(self.velocity) #m/s
+                        self.tag_velocity_ned.z=-self.tag_velocity_ned.z  #ned
+                        self.global_point_from_vector()
+                        self.send_gps_message()
+                        self.location_update=False
+                        now=time.time()
+                        print("update hz:"+str(1/(now-self.location_update_time)))
+                        self.location_update_time=now
 
 def init(mpstate):
     '''initialise module'''
