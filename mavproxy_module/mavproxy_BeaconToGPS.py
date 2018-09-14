@@ -44,7 +44,7 @@ class BeaconToGPS(mp_module.MPModule):
                         print("NED to UWB yaw:" + str(self.yaw_deg)+" deg")
 
                 self.debug = 0
-                self.debug=self.config_file_parser.getint("SYS","debug"):
+                self.debug=self.config_file_parser.getint("SYS","debug")
                 if self.debug is None:
                     self.debug=0    
 
