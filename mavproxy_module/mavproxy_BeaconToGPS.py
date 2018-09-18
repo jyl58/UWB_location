@@ -26,7 +26,7 @@ class BeaconToGPS(mp_module.MPModule):
 	def __init__(self, mpstate):
         	"""Initialise module"""
         	super(BeaconToGPS, self).__init__(mpstate, "BeaconToGPS", "")
-		self.anchor_config=None #'[[0x6e08,0,0,950];[0x6e45,5000,0,2330];[0x6e48,0,6010,2360];[0x6e65,5000,6010,1370]]'
+		self.anchor_config=None 
 
                 self.config_file_parser=ConfigParser.ConfigParser()
                 self.config_file_parser.read( os.getcwd() + '/config/uwb_config.conf')
@@ -81,6 +81,8 @@ class BeaconToGPS(mp_module.MPModule):
 		self.sin_yaw=math.sin(self.yaw)
 		self.location_update=False
 		self.location_update_time=0
+		self.pos_update_time=0
+		self.location_update_freq=8
         	self.data = {
             		'time_usec' : 0,                        # (uint64_t) Timestamp (micros since boot or Unix epoch)
             		'gps_id' : 0,                           # (uint8_t) ID of the GPS for multiple GPS inputs
@@ -220,8 +222,6 @@ class BeaconToGPS(mp_module.MPModule):
                 	self.data['satellites_visible'])
 
 	def global_point_from_vector(self):
-		#lat_reference_rad=self.reference_lat*self.DEG_TO_RAD
-		#lon_reference_rad=self.reference_lon*self.DEG_TO_RAD
 		self.current_lat=( self.reference_lat_rad + self.tag_pos_ned.x/self.CONSTANTS_RADIUS_OF_EARTH )*self.RAD_TO_DEG
         	self.current_lon=( self.reference_lon_rad + self.tag_pos_ned.y/self.target_lon_param )*self.RAD_TO_DEG
 		if self.debug == 2:
@@ -229,7 +229,6 @@ class BeaconToGPS(mp_module.MPModule):
 
 	def convert_to_ned(self,vector):
 		ned_vector=Coordinates()
-		#ned_vector.x=vector.x*math.cos(self.yaw)-vector.y*math.sin(self.yaw)
 		ned_vector.x=vector.x*self.cos_yaw - vector.y*self.sin_yaw
 		ned_vector.y=vector.x*self.sin_yaw + vector.y*self.cos_yaw
 		ned_vector.z=vector.z
@@ -241,18 +240,20 @@ class BeaconToGPS(mp_module.MPModule):
 			print("pozyx dev is none")
 			return
 
-		self.get_location()
-		if self.location_update:
-                        self.tag_pos_ned=self.convert_to_ned(self.position) #m
-                        self.tag_velocity_ned=self.convert_to_ned(self.velocity) #m/s
-                        self.tag_velocity_ned.z=-self.tag_velocity_ned.z  #ned
-                        self.global_point_from_vector()
-                        self.send_gps_message()
-                        self.location_update=False
-                        if self.debug == 1:
-                                now=time.time()
-                                print("update hz:"+str(1/(now-self.location_update_time)))
-                                self.location_update_time=now
+		now=time.time()	
+		if (now-self.pos_update_time) > 1/self.location_update_freq:
+			self.get_location()
+			if self.location_update:
+                                self.pos_update_time=now # just location update done,then update time
+                                self.tag_pos_ned=self.convert_to_ned(self.position) #m
+                                self.tag_velocity_ned=self.convert_to_ned(self.velocity) #m/s
+                                self.tag_velocity_ned.z=-self.tag_velocity_ned.z  #ned
+                                self.global_point_from_vector()
+                                self.send_gps_message()
+                                self.location_update=False
+                                if self.debug == 1:
+                                        print("update hz:"+str(1/(now-self.location_update_time)))
+                                        self.location_update_time=now
 
 def init(mpstate):
     '''initialise module'''
